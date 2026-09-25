@@ -94,12 +94,6 @@ label.chip input:checked + span{background:var(--ink);color:var(--sea);border-co
 .btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line);padding:9px 20px;font-size:.9rem}
 .done{font-weight:700;margin:0 0 12px}
 
-.bars{display:grid;gap:10px;margin:0;padding:0;list-style:none}
-.bar{display:grid;grid-template-columns:7.5em 1fr 3.2em;gap:10px;align-items:center;font-size:.92rem}
-.bar .track{height:14px;border-radius:7px;background:var(--tile);overflow:hidden}
-.bar .fill{height:100%;background:var(--y3);border-radius:7px;transition:width .6s}
-.bar .n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
-.bar.me .fill{background:var(--focus)}
 
 /* vote */
 .deadline{font-size:.9rem;color:var(--muted);margin:-8px 0 14px}
@@ -184,12 +178,6 @@ footer button{font:inherit;background:none;border:0;color:inherit;text-decoratio
     <div class="panel" id="pinPanel"></div>
   </section>
 
-  <section aria-labelledby="h-scene">
-    <h2 id="h-scene">みんなが聴いている場面</h2>
-    <p class="lead" id="sceneLead"></p>
-    <ul class="bars" id="sceneBars"></ul>
-  </section>
-
   <section aria-labelledby="h-vote">
     <h2 id="h-vote"><span class="step">2</span>金曜の放送で話すテーマ</h2>
     <p class="deadline" id="deadlineText"></p>
@@ -235,8 +223,8 @@ const FIREBASE_CONFIG = {
 // ===================================================================
 const WEEK = {
   id: "2026-10-02",                       // 放送日など。週ごとに変えると投票がリセットされる
-  deadline: "2026-10-01T23:59:00+09:00",  // 投票と希望の締め切り
-  deadlineText: "木曜 23:59 締め切り。投票の結果と、届いた希望は金曜の放送で紹介します。",
+  deadline: "2026-10-02T23:59:00+09:00",  // 投票と希望の締め切り
+  deadlineText: "金曜 23:59 締め切り。投票の結果と、届いた希望は金曜の放送で紹介します。",
   topics: [
     { id: "a", title: "先生の仕事、どこまで手放していい？", note: "のざたんの候補" },
     { id: "b", title: "生成AIの宿題、禁止する？ 使わせる？", note: "のざたんの候補" },
@@ -288,7 +276,7 @@ function startListener(){
   onAuthStateChanged(auth, user => {
     if (!user) { signInAnonymously(auth).catch(e => showStatus("接続できませんでした。時間をおいて読み込み直してください。（" + e.code + "）", true)); return; }
     uid = user.uid;
-    onValue(ref(db, "pins"), s => { pins = s.val() || {}; renderMap(); renderPin(); renderScenes(); }, onErr);
+    onValue(ref(db, "pins"), s => { pins = s.val() || {}; renderMap(); renderPin(); }, onErr);
     onValue(ref(db, `votes/${WEEK.id}`), s => { votes = s.val() || {}; renderVote(); }, onErr);
     onValue(ref(db, "publicWishes"), s => { publicWishes = s.val() || {}; renderWishList(); }, onErr);
     onValue(ref(db, `footprints/${WEEK.id}`), s => { footprints = s.val() || {}; renderFoot(); }, onErr);
@@ -376,18 +364,6 @@ function renderPin(){
 function updatePinBtn(){
   const btn = $("#pinBtn"); if (!btn) return;
   btn.disabled = !($("#prefSel").value && document.querySelector('input[name="scene"]:checked'));
-}
-
-// --- scenes ---
-function renderScenes(){
-  const mine = myPin()?.scene;
-  const counts = SCENES.map(s => Object.values(pins).filter(p => p?.scene === s).length);
-  const total = counts.reduce((a,b) => a+b, 0), max = Math.max(1, ...counts);
-  $("#sceneLead").textContent = total ? `${total}人の回答から。` : "まだ回答がありません。";
-  $("#sceneBars").innerHTML = SCENES.map((s,i) =>
-    `<li class="bar${mine===s?" me":""}"><span>${esc(s)}</span>
-      <span class="track"><span class="fill" style="width:${(counts[i]/max*100).toFixed(1)}%"></span></span>
-      <span class="n">${counts[i]}人</span></li>`).join("");
 }
 
 // --- footprint（1日1回・今週の分を合計） ---
@@ -490,7 +466,7 @@ function renderWishList(){
     : `<li><p>まだありません。最初の希望を書いてみませんか？</p></li>`;
 }
 
-function renderAll(){ renderMap(); renderFoot(); renderPin(); renderScenes(); renderVote(); renderWish(); renderWishList(); }
+function renderAll(){ renderMap(); renderFoot(); renderPin(); renderVote(); renderWish(); renderWishList(); }
 
 // ---------- 管理画面（#admin） ----------
 function startAdmin(){
