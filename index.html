@@ -45,11 +45,13 @@ h1{margin:.1em 0 0;font-size:clamp(1.9rem,7vw,2.5rem);font-weight:900;line-heigh
 .reach b{font-size:clamp(2.6rem,11vw,3.4rem);font-weight:900;line-height:1}
 .reach span{font-weight:700}
 .reach small{color:var(--muted);font-size:.95rem;width:100%}
-.map{display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(12,1fr);gap:3px;
-  aspect-ratio:13/12;margin:6px 0 4px}
+.map{display:grid;grid-template-columns:repeat(14,1fr);grid-template-rows:repeat(15,1fr);gap:3px;
+  aspect-ratio:14/15;margin:6px 0 4px;container-type:inline-size}
 .tile{position:relative;border:0;border-radius:6px;background:var(--tile);color:var(--ink);
-  font:inherit;font-size:clamp(.5rem,2.3vw,.72rem);font-weight:700;padding:0;cursor:pointer;
+  font:inherit;font-size:min(.8rem,2.6cqw);font-weight:700;padding:0;cursor:pointer;
   display:flex;align-items:center;justify-content:center;line-height:1;transition:background-color .4s}
+.tile.long{font-size:min(.72rem,2.1cqw);letter-spacing:-.04em}
+.tile.big{font-size:min(1.05rem,3.4cqw);border-radius:10px}
 .tile[data-lv="1"]{background:var(--y1)}
 .tile[data-lv="2"]{background:var(--y2)}
 .tile[data-lv="3"]{background:var(--y3);color:#2A1A05}
@@ -239,18 +241,18 @@ import { getDatabase, ref, onValue, set, update, push, remove, get, serverTimest
   from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
 // ---------- 固定データ ----------
+// [名前, 地図の表示名, 列, 行, 幅, 高さ]。並びは JIS X 0401（北海道→沖縄）
 const PREFS = [
-  ["北海道","北海",12,0],["青森県","青森",11,2],["秋田県","秋田",10,3],["岩手県","岩手",11,3],
-  ["新潟県","新潟",9,4],["山形県","山形",10,4],["宮城県","宮城",11,4],
-  ["石川県","石川",7,5],["富山県","富山",8,5],["長野県","長野",9,5],["群馬県","群馬",10,5],["福島県","福島",11,5],
-  ["福井県","福井",7,6],["岐阜県","岐阜",8,6],["山梨県","山梨",9,6],["埼玉県","埼玉",10,6],["栃木県","栃木",11,6],["茨城県","茨城",12,6],
-  ["山口県","山口",2,7],["島根県","島根",3,7],["鳥取県","鳥取",4,7],["兵庫県","兵庫",5,7],["京都府","京都",6,7],["滋賀県","滋賀",7,7],
-  ["愛知県","愛知",8,7],["静岡県","静岡",9,7],["東京都","東京",10,7],["千葉県","千葉",11,7],
-  ["佐賀県","佐賀",0,8],["福岡県","福岡",1,8],["大分県","大分",2,8],["広島県","広島",3,8],["岡山県","岡山",4,8],
-  ["大阪府","大阪",5,8],["奈良県","奈良",6,8],["三重県","三重",7,8],["神奈川県","神奈",10,8],
-  ["長崎県","長崎",0,9],["熊本県","熊本",1,9],["宮崎県","宮崎",2,9],["愛媛県","愛媛",3,9],["香川県","香川",4,9],["和歌山県","和歌",6,9],
-  ["鹿児島県","鹿児",1,10],["高知県","高知",3,10],["徳島県","徳島",4,10],
-  ["沖縄県","沖縄",0,11],["海外","海外",12,11]
+  ["北海道","北海道",11,0,3,2],
+  ["青森県","青森",12,3],["岩手県","岩手",12,4],["宮城県","宮城",12,5],["秋田県","秋田",11,4],["山形県","山形",11,5],["福島県","福島",12,6],
+  ["茨城県","茨城",13,7],["栃木県","栃木",12,7],["群馬県","群馬",11,6],["埼玉県","埼玉",11,7],["千葉県","千葉",12,8],["東京都","東京",11,8],["神奈川県","神奈川",11,9],
+  ["新潟県","新潟",10,5],["富山県","富山",9,6],["石川県","石川",8,6],["福井県","福井",8,7],["山梨県","山梨",10,7],["長野県","長野",10,6],
+  ["岐阜県","岐阜",9,7],["静岡県","静岡",10,8],["愛知県","愛知",9,8],
+  ["三重県","三重",8,9],["滋賀県","滋賀",8,8],["京都府","京都",7,8],["大阪府","大阪",6,9],["兵庫県","兵庫",6,8],["奈良県","奈良",7,9],["和歌山県","和歌山",7,10],
+  ["鳥取県","鳥取",5,8],["島根県","島根",4,8],["岡山県","岡山",5,9],["広島県","広島",4,9],["山口県","山口",3,8],
+  ["徳島県","徳島",5,12],["香川県","香川",5,11],["愛媛県","愛媛",4,11],["高知県","高知",4,12],
+  ["福岡県","福岡",2,10],["佐賀県","佐賀",1,10],["長崎県","長崎",0,11],["熊本県","熊本",1,11],["大分県","大分",2,11],["宮崎県","宮崎",2,12],["鹿児島県","鹿児島",1,12],
+  ["沖縄県","沖縄",0,14],["海外","海外",13,14]
 ];
 const PREF_NAMES = new Set(PREFS.map(p => p[0]));
 const HOME = "高知県";
@@ -302,10 +304,11 @@ function level(n){ return n===0?0 : n<=2?1 : n<=5?2 : n<=9?3 : 4; }
 function renderMap(){
   const counts = prefCounts(), mine = myPin()?.pref;
   const map = $("#map"); map.innerHTML = "";
-  PREFS.forEach(([name, short, c, r]) => {
+  PREFS.forEach(([name, short, c, r, w = 1, h = 1]) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "tile"; b.textContent = short;
-    b.style.gridColumn = c + 1; b.style.gridRow = r + 1;
+    b.style.gridColumn = `${c + 1} / span ${w}`; b.style.gridRow = `${r + 1} / span ${h}`;
+    if (w > 1) b.classList.add("big"); else if (short.length > 2) b.classList.add("long");
     const n = counts[name] || 0;
     b.dataset.lv = level(n);
     b.setAttribute("aria-label", `${name} ${n}人`);
