@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>リスナー広場（試作）｜学びのセカンドオピニオン</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sea:#EAF2F5; --paper:#FFFFFF; --ink:#16324A; --muted:#5A7285;
+  --tile:#D3E0E7; --line:#BCCFDA;
+  --y1:#FBE9A6; --y2:#F5CF4A; --y3:#E8A317; --y4:#C46F12;
+  --focus:#1C6FB8;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --sea:#0F2436; --paper:#16314A; --ink:#E4EDF3; --muted:#9BB2C3;
+    --tile:#24445E; --line:#2F5470;
+    --y1:#6B5A1E; --y2:#A8841E; --y3:#E0A21E; --y4:#FFC94A;
+    --focus:#7FC0FF;
+  }
+}
+:root[data-theme="dark"]{
+  --sea:#0F2436; --paper:#16314A; --ink:#E4EDF3; --muted:#9BB2C3;
+  --tile:#24445E; --line:#2F5470;
+  --y1:#6B5A1E; --y2:#A8841E; --y3:#E0A21E; --y4:#FFC94A;
+  --focus:#7FC0FF;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--sea);color:var(--ink);
+  font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif;
+  line-height:1.75;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:28px 18px 48px}
+header p{margin:0;font-size:.9rem;color:var(--muted);font-weight:500}
+h1{margin:.1em 0 0;font-size:clamp(1.9rem,7vw,2.5rem);font-weight:900;line-height:1.25;letter-spacing:.02em}
+
+/* map */
+.reach{margin:22px 0 10px;display:flex;align-items:baseline;gap:.4em;flex-wrap:wrap}
+.reach b{font-size:clamp(2.6rem,11vw,3.4rem);font-weight:900;line-height:1}
+.reach span{font-weight:700}
+.reach small{color:var(--muted);font-size:.95rem;width:100%}
+.map{display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(12,1fr);gap:3px;
+  aspect-ratio:13/12;margin:6px 0 4px}
+.tile{position:relative;border:0;border-radius:6px;background:var(--tile);color:var(--ink);
+  font:inherit;font-size:clamp(.5rem,2.3vw,.72rem);font-weight:700;padding:0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;line-height:1;transition:background-color .4s}
+.tile[data-lv="1"]{background:var(--y1)}
+.tile[data-lv="2"]{background:var(--y2)}
+.tile[data-lv="3"]{background:var(--y3);color:#2A1A05}
+.tile[data-lv="4"]{background:var(--y4);color:#fff}
+.tile.sel{outline:3px solid var(--ink);outline-offset:1px;z-index:2}
+.tile.mine::after{content:"";position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;
+  background:var(--focus);border:2px solid var(--paper)}
+.tile.home{z-index:1}
+.tile.home::before{content:"";position:absolute;inset:-2px;border-radius:9px;border:2px solid var(--y4);
+  animation:wave 2.4s ease-out 3}
+@keyframes wave{from{transform:scale(1);opacity:.9}to{transform:scale(2.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.tile.home::before{animation:none;opacity:0}.tile{transition:none}}
+.tile:focus-visible,button:focus-visible,select:focus-visible,label.chip:focus-within{outline:3px solid var(--focus);outline-offset:2px}
+.readout{min-height:1.75em;margin:6px 0 0;font-weight:500}
+.legend{display:flex;gap:10px;align-items:center;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:4px}
+
+/* sections */
+section{margin-top:40px}
+h2{font-size:1.35rem;font-weight:900;margin:0 0 4px;display:flex;gap:.5em;align-items:baseline}
+h2 .step{flex:none;width:1.7em;height:1.7em;border-radius:50%;background:var(--ink);color:var(--sea);
+  display:inline-grid;place-items:center;font-size:.8rem;transform:translateY(-2px)}
+.lead{margin:0 0 16px;color:var(--muted)}
+.panel{background:var(--paper);border-radius:18px;padding:20px 18px}
+label.field{display:block;font-weight:700;margin-bottom:6px}
+select{width:100%;font:inherit;font-size:1rem;padding:10px 12px;border-radius:10px;border:2px solid var(--line);
+  background:var(--sea);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px;padding:0;border:0}
+.chips legend{font-weight:700;margin-bottom:8px;padding:0}
+label.chip{position:relative;cursor:pointer}
+label.chip input{position:absolute;opacity:0;pointer-events:none}
+label.chip span{display:inline-block;padding:7px 14px;border-radius:999px;border:2px solid var(--line);font-weight:500}
+label.chip input:checked + span{background:var(--ink);color:var(--sea);border-color:var(--ink)}
+.btn{font:inherit;font-weight:700;font-size:1rem;border:0;border-radius:999px;padding:12px 26px;cursor:pointer;
+  background:var(--y3);color:#2A1A05}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line);padding:9px 20px;font-size:.9rem}
+.done{font-weight:700;margin:0 0 12px}
+
+.bars{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.bar{display:grid;grid-template-columns:7.5em 1fr 3.2em;gap:10px;align-items:center;font-size:.92rem}
+.bar .track{height:14px;border-radius:7px;background:var(--tile);overflow:hidden}
+.bar .fill{height:100%;background:var(--y3);border-radius:7px;transition:width .6s}
+.bar .n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar.me .fill{background:var(--focus)}
+
+/* vote */
+.deadline{font-size:.9rem;color:var(--muted);margin:-8px 0 14px}
+.opts{display:grid;gap:10px;margin:0 0 16px;padding:0;border:0}
+.opt{display:block;cursor:pointer;border:2px solid var(--line);border-radius:14px;padding:14px 16px;position:relative}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt:has(input:checked){border-color:var(--ink);background:var(--sea)}
+.opt:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:2px}
+.opt strong{display:block;font-size:1.05rem;line-height:1.5}
+.opt em{font-style:normal;font-size:.82rem;color:var(--muted)}
+.result{border-radius:14px;padding:12px 14px;border:2px solid var(--line);margin-bottom:10px}
+.result.me{border-color:var(--focus)}
+.result strong{display:block;line-height:1.5;margin-bottom:6px}
+.result .row{display:grid;grid-template-columns:1fr 3.4em;gap:10px;align-items:center}
+.result .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* wish */
+textarea,input.text{width:100%;font:inherit;font-size:1rem;padding:10px 12px;border-radius:10px;border:2px solid var(--line);
+  background:var(--sea);color:var(--ink);resize:vertical}
+textarea{min-height:5.5em;line-height:1.6}
+textarea:focus-visible,input.text:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.count{font-size:.8rem;color:var(--muted);text-align:right;margin:4px 0 14px;font-variant-numeric:tabular-nums}
+.count.over{color:#C0392B;font-weight:700}
+.hint{font-size:.82rem;color:var(--muted);margin:4px 0 18px}
+.inner-h{font-size:1.05rem;font-weight:900;margin:0 0 10px}
+.divider{border:0;border-top:2px dashed var(--line);margin:24px 0 20px}
+.subh{font-size:1.05rem;font-weight:900;margin:28px 0 8px}
+.wishes{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.wishes li{background:var(--paper);border-radius:14px;padding:12px 16px;border-left:5px solid var(--y2)}
+.wishes li.mine{border-left-color:var(--focus)}
+.wishes p{margin:0;line-height:1.6}
+.wishes small{color:var(--muted);font-size:.8rem}
+
+footer{margin-top:48px;font-size:.82rem;color:var(--muted)}
+footer button{font:inherit;background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;padding:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* status / admin */
+.notice{background:var(--paper);border-left:5px solid var(--y3);border-radius:12px;padding:12px 16px;margin:16px 0 0;font-weight:500}
+.notice.err{border-left-color:#C0392B}
+.admin h2{margin-top:8px}
+.admin .who{font-size:.85rem;color:var(--muted);word-break:break-all}
+.admin-item{background:var(--paper);border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:5px solid var(--line)}
+.admin-item[data-status="published"]{border-left-color:var(--y3)}
+.admin-item[data-status="hidden"]{opacity:.6}
+.admin-item p{margin:0 0 4px;line-height:1.6}
+.admin-item small{color:var(--muted);display:block;margin-bottom:10px}
+.admin-item .btn{padding:8px 18px;font-size:.88rem;margin-right:6px}
+.tabs{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap" id="listenerView">
+  <header>
+    <p>学びのセカンドオピニオン</p>
+    <h1>リスナー広場</h1>
+  </header>
+  <div id="status" class="notice" hidden></div>
+
+  <div class="reach" aria-live="polite">
+    <b id="reachNum">0</b><span>/ 47 都道府県に届いています</span>
+    <small id="reachRest"></small>
+  </div>
+  <div class="map" id="map" role="group" aria-label="都道府県の地図。タップすると人数が見られます"></div>
+  <p class="readout" id="readout" aria-live="polite">高知から配信中。地図をタップすると、その県の人数が見られます。</p>
+  <div class="legend" aria-hidden="true">
+    <span><i style="background:var(--tile)"></i>まだ</span>
+    <span><i style="background:var(--y1)"></i>1〜2人</span>
+    <span><i style="background:var(--y2)"></i>3〜5人</span>
+    <span><i style="background:var(--y3)"></i>6〜9人</span>
+    <span><i style="background:var(--y4)"></i>10人〜</span>
+  </div>
+
+  <section aria-labelledby="h-pin">
+    <h2 id="h-pin"><span class="step">1</span>どこで聴いていますか？</h2>
+    <p class="lead">都道府県と、よく聴く場面を教えてください。名前は出ません。</p>
+    <div class="panel" id="pinPanel"></div>
+  </section>
+
+  <section aria-labelledby="h-scene">
+    <h2 id="h-scene">みんなが聴いている場面</h2>
+    <p class="lead" id="sceneLead"></p>
+    <ul class="bars" id="sceneBars"></ul>
+  </section>
+
+  <section aria-labelledby="h-vote">
+    <h2 id="h-vote"><span class="step">2</span>金曜の放送で話すテーマ</h2>
+    <p class="deadline" id="deadlineText"></p>
+    <div class="panel">
+      <h3 class="inner-h">候補に投票する</h3>
+      <div id="votePanel"></div>
+      <hr class="divider">
+      <h3 class="inner-h">話してほしいテーマを書く</h3>
+      <p class="lead" style="margin:-2px 0 12px">候補にないテーマは自由に書いてください。届いた希望から、次の週の候補を1つ選びます。</p>
+      <div id="wishPanel"></div>
+    </div>
+    <h3 class="subh">最近届いた希望</h3>
+    <p class="lead" style="margin-top:-4px">のざたんが確認したものだけ載せています。</p>
+    <ul class="wishes" id="wishList"></ul>
+  </section>
+
+  <footer>
+    <p>仮バージョンです。この端末でのピンと投票は、ブラウザのデータを消すまで覚えています。</p>
+  </footer>
+</div>
+
+<div class="wrap admin" id="adminView" hidden>
+  <header>
+    <p>リスナー広場</p>
+    <h1>管理画面</h1>
+  </header>
+  <div id="adminBody"></div>
+</div>
+<script type="module">
+// ===================================================================
+// 1) Firebase の設定：コンソールの「プロジェクトの設定 → マイアプリ」の値を貼る
+// ===================================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBaTRtbkAdv9dTqUstxprNkeXBcGPg3IC0",
+  authDomain: "listener-board.firebaseapp.com",
+  databaseURL: "https://listener-board-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "listener-board",
+  appId: "1:698698377804:web:6ad8cb9e94989ea71862e9"
+};
+
+// ===================================================================
+// 2) 今週の設定：毎週ここを書き換えて公開し直す
+// ===================================================================
+const WEEK = {
+  id: "2026-10-02",                       // 放送日など。週ごとに変えると投票がリセットされる
+  deadline: "2026-10-01T23:59:00+09:00",  // 投票と希望の締め切り
+  deadlineText: "木曜 23:59 締め切り。投票の結果と、届いた希望は金曜の放送で紹介します。",
+  topics: [
+    { id: "a", title: "先生の仕事、どこまで手放していい？", note: "のざたんの候補" },
+    { id: "b", title: "生成AIの宿題、禁止する？ 使わせる？", note: "のざたんの候補" },
+    { id: "c", title: "子どもの「なんで？」に、どこまで付き合う？", note: "先週届いた希望から：ゆずポンさん" }
+  ]
+};
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut }
+  from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getDatabase, ref, onValue, set, update, push, remove, get, serverTimestamp, goOffline, goOnline }
+  from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+// ---------- 固定データ ----------
+const PREFS = [
+  ["北海道","北海",12,0],["青森県","青森",11,2],["秋田県","秋田",10,3],["岩手県","岩手",11,3],
+  ["新潟県","新潟",9,4],["山形県","山形",10,4],["宮城県","宮城",11,4],
+  ["石川県","石川",7,5],["富山県","富山",8,5],["長野県","長野",9,5],["群馬県","群馬",10,5],["福島県","福島",11,5],
+  ["福井県","福井",7,6],["岐阜県","岐阜",8,6],["山梨県","山梨",9,6],["埼玉県","埼玉",10,6],["栃木県","栃木",11,6],["茨城県","茨城",12,6],
+  ["山口県","山口",2,7],["島根県","島根",3,7],["鳥取県","鳥取",4,7],["兵庫県","兵庫",5,7],["京都府","京都",6,7],["滋賀県","滋賀",7,7],
+  ["愛知県","愛知",8,7],["静岡県","静岡",9,7],["東京都","東京",10,7],["千葉県","千葉",11,7],
+  ["佐賀県","佐賀",0,8],["福岡県","福岡",1,8],["大分県","大分",2,8],["広島県","広島",3,8],["岡山県","岡山",4,8],
+  ["大阪府","大阪",5,8],["奈良県","奈良",6,8],["三重県","三重",7,8],["神奈川県","神奈",10,8],
+  ["長崎県","長崎",0,9],["熊本県","熊本",1,9],["宮崎県","宮崎",2,9],["愛媛県","愛媛",3,9],["香川県","香川",4,9],["和歌山県","和歌",6,9],
+  ["鹿児島県","鹿児",1,10],["高知県","高知",3,10],["徳島県","徳島",4,10],
+  ["沖縄県","沖縄",0,11],["海外","海外",12,11]
+];
+const PREF_NAMES = new Set(PREFS.map(p => p[0]));
+const HOME = "高知県";
+const SCENES = ["通勤・通学","家事","散歩・運動","仕事の合間","寝る前","そのほか"];
+const WISH_MAX = 80;
+
+// ---------- 画面の状態 ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let db, auth, uid = null;
+let pins = {}, votes = {}, publicWishes = {};
+let selected = null, wishSent = false, editingPin = false;
+const closed = () => Date.now() > new Date(WEEK.deadline).getTime();
+
+function showStatus(msg, isErr){
+  const el = $("#status");
+  el.hidden = !msg; el.textContent = msg || ""; el.classList.toggle("err", !!isErr);
+}
+
+// ---------- 起動 ----------
+if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.databaseURL) {
+  showStatus("Firebase の設定がまだ入っていません。ファイル上部の FIREBASE_CONFIG に値を貼ってください。", true);
+  renderAll();
+} else {
+  const app = initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(app);
+  db = getDatabase(app);
+  if (location.hash === "#admin") startAdmin(); else startListener();
+}
+
+// ---------- リスナー画面 ----------
+function startListener(){
+  renderAll();
+  onAuthStateChanged(auth, user => {
+    if (!user) { signInAnonymously(auth).catch(e => showStatus("接続できませんでした。時間をおいて読み込み直してください。（" + e.code + "）", true)); return; }
+    uid = user.uid;
+    onValue(ref(db, "pins"), s => { pins = s.val() || {}; renderMap(); renderPin(); renderScenes(); }, onErr);
+    onValue(ref(db, `votes/${WEEK.id}`), s => { votes = s.val() || {}; renderVote(); }, onErr);
+    onValue(ref(db, "publicWishes"), s => { publicWishes = s.val() || {}; renderWishList(); }, onErr);
+  });
+  // 裏に回したタブは接続を切る（Spark の同時接続100を節約）
+  document.addEventListener("visibilitychange", () => {
+    if (!db) return;
+    document.hidden ? goOffline(db) : goOnline(db);
+  });
+}
+function onErr(e){ showStatus("データを読み込めませんでした。（" + (e.code || e.message) + "）", true); }
+
+const myPin = () => (uid && pins[uid]) || null;
+const myVote = () => (uid && votes[uid]) || null;
+
+// --- map ---
+function prefCounts(){
+  const c = {};
+  for (const p of Object.values(pins)) if (p && PREF_NAMES.has(p.pref)) c[p.pref] = (c[p.pref] || 0) + 1;
+  return c;
+}
+function level(n){ return n===0?0 : n<=2?1 : n<=5?2 : n<=9?3 : 4; }
+function renderMap(){
+  const counts = prefCounts(), mine = myPin()?.pref;
+  const map = $("#map"); map.innerHTML = "";
+  PREFS.forEach(([name, short, c, r]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tile"; b.textContent = short;
+    b.style.gridColumn = c + 1; b.style.gridRow = r + 1;
+    const n = counts[name] || 0;
+    b.dataset.lv = level(n);
+    b.setAttribute("aria-label", `${name} ${n}人`);
+    if (name === HOME) b.classList.add("home");
+    if (name === mine) b.classList.add("mine");
+    if (name === selected) b.classList.add("sel");
+    b.addEventListener("click", () => {
+      selected = name;
+      const n2 = prefCounts()[name] || 0;
+      $("#readout").textContent = n2
+        ? `${name}${name===HOME?"（配信地）":""}：${n2}人が聴いています。`
+        : `${name}：まだピンがありません。最初の1人になりませんか？`;
+      const sel = $("#prefSel"); if (sel) { sel.value = name; updatePinBtn(); }
+      renderMap();
+    });
+    map.appendChild(b);
+  });
+  const reached = PREFS.filter(([n]) => n !== "海外" && counts[n]).length;
+  $("#reachNum").textContent = reached;
+  $("#reachRest").textContent = reached >= 47 ? "全国制覇しました！" : `全国制覇まで、あと${47 - reached}県。`;
+}
+
+// --- pin ---
+function renderPin(){
+  const p = $("#pinPanel"), mp = myPin();
+  if (!uid) { p.innerHTML = `<p class="lead" style="margin:0">接続しています…</p>`; return; }
+  if (mp && !editingPin) {
+    p.innerHTML = `<p class="done">${esc(mp.pref)}にピンを刺しました。聴いてくれてありがとうございます。</p>
+      <p class="lead" style="margin:-6px 0 14px">よく聴く場面：${esc(mp.scene)}</p>
+      <button type="button" class="btn ghost" id="unpin">場所や場面を変える</button>`;
+    $("#unpin").addEventListener("click", () => { editingPin = true; selected = mp.pref; renderPin(); });
+    return;
+  }
+  const opts = PREFS.map(([n]) => `<option value="${esc(n)}"${n===(selected||mp?.pref)?" selected":""}>${esc(n)}</option>`).join("");
+  const chips = SCENES.map(s => `<label class="chip"><input type="radio" name="scene" value="${esc(s)}"${mp?.scene===s?" checked":""}><span>${esc(s)}</span></label>`).join("");
+  p.innerHTML = `
+    <label class="field" for="prefSel">都道府県</label>
+    <select id="prefSel"><option value="">選んでください</option>${opts}</select>
+    <fieldset class="chips" style="margin-top:18px"><legend>よく聴く場面</legend>${chips}</fieldset>
+    <button type="button" class="btn" id="pinBtn" disabled>${mp ? "ピンを刺し直す" : "ピンを刺す"}</button>`;
+  $("#prefSel").addEventListener("change", e => { selected = e.target.value || null; updatePinBtn(); renderMap(); });
+  p.querySelectorAll('input[name="scene"]').forEach(i => i.addEventListener("change", updatePinBtn));
+  $("#pinBtn").addEventListener("click", async () => {
+    const pref = $("#prefSel").value;
+    const scene = p.querySelector('input[name="scene"]:checked')?.value;
+    if (!pref || !scene) return;
+    $("#pinBtn").disabled = true;
+    try {
+      await set(ref(db, `pins/${uid}`), { pref, scene, at: serverTimestamp() });
+      editingPin = false; selected = pref;
+      $("#readout").textContent = `${pref}にピンを刺しました。`;
+    } catch (e) { showStatus("ピンを刺せませんでした。（" + e.code + "）", true); $("#pinBtn").disabled = false; }
+  });
+  updatePinBtn();
+}
+function updatePinBtn(){
+  const btn = $("#pinBtn"); if (!btn) return;
+  btn.disabled = !($("#prefSel").value && document.querySelector('input[name="scene"]:checked'));
+}
+
+// --- scenes ---
+function renderScenes(){
+  const mine = myPin()?.scene;
+  const counts = SCENES.map(s => Object.values(pins).filter(p => p?.scene === s).length);
+  const total = counts.reduce((a,b) => a+b, 0), max = Math.max(1, ...counts);
+  $("#sceneLead").textContent = total ? `${total}人の回答から。` : "まだ回答がありません。";
+  $("#sceneBars").innerHTML = SCENES.map((s,i) =>
+    `<li class="bar${mine===s?" me":""}"><span>${esc(s)}</span>
+      <span class="track"><span class="fill" style="width:${(counts[i]/max*100).toFixed(1)}%"></span></span>
+      <span class="n">${counts[i]}人</span></li>`).join("");
+}
+
+// --- vote ---
+function renderVote(){
+  const p = $("#votePanel"), mv = myVote();
+  $("#deadlineText").textContent = closed() ? "今週の受付は締め切りました。結果は金曜の放送で。" : WEEK.deadlineText;
+  if (!uid) { p.innerHTML = `<p class="lead" style="margin:0">接続しています…</p>`; return; }
+  if (mv || closed()) {
+    const counts = WEEK.topics.map(t => Object.values(votes).filter(v => v === t.id).length);
+    const total = counts.reduce((a,b) => a+b, 0);
+    p.innerHTML = `<p class="done">${mv ? "投票しました。" : ""}途中経過（${total}票）</p>` +
+      WEEK.topics.map((t,i) => {
+        const pct = total ? Math.round(counts[i]/total*100) : 0, me = mv === t.id;
+        return `<div class="result${me?" me":""}"><strong>${esc(t.title)}</strong>
+          <div class="row"><span style="height:14px;border-radius:7px;background:var(--tile);overflow:hidden;display:block">
+          <span style="display:block;height:100%;width:${pct}%;background:${me?"var(--focus)":"var(--y3)"};border-radius:7px"></span></span>
+          <span class="n">${pct}%</span></div>${me?'<em style="font-style:normal;font-size:.82rem;color:var(--muted)">あなたの1票</em>':""}</div>`;
+      }).join("") +
+      (mv && !closed() ? `<button type="button" class="btn ghost" id="revote" style="margin-top:6px">投票をやり直す</button>` : "");
+    $("#revote")?.addEventListener("click", () => remove(ref(db, `votes/${WEEK.id}/${uid}`)).catch(onErr));
+    return;
+  }
+  p.innerHTML = `<fieldset class="opts"><legend class="sr">テーマを1つ選ぶ</legend>` +
+    WEEK.topics.map(t => `<label class="opt"><input type="radio" name="topic" value="${esc(t.id)}">
+      <strong>${esc(t.title)}</strong><em>${esc(t.note)}</em></label>`).join("") +
+    `</fieldset><button type="button" class="btn" id="voteBtn" disabled>このテーマに投票する</button>`;
+  p.querySelectorAll('input[name="topic"]').forEach(i => i.addEventListener("change", () => { $("#voteBtn").disabled = false; }));
+  $("#voteBtn").addEventListener("click", async () => {
+    const v = p.querySelector('input[name="topic"]:checked')?.value;
+    if (!v) return;
+    $("#voteBtn").disabled = true;
+    try { await set(ref(db, `votes/${WEEK.id}/${uid}`), v); }
+    catch (e) { showStatus("投票できませんでした。（" + e.code + "）", true); $("#voteBtn").disabled = false; }
+  });
+}
+
+// --- wish ---
+function renderWish(){
+  const p = $("#wishPanel");
+  if (closed()) { p.innerHTML = `<p class="lead" style="margin:0">今週の受付は締め切りました。</p>`; return; }
+  if (wishSent) {
+    p.innerHTML = `<p class="done">希望を受け付けました。のざたんが確認してから、下の一覧に載ります。候補に選ばれたら放送で紹介します。</p>
+      <button type="button" class="btn ghost" id="wishMore">もう1つ書く</button>`;
+    $("#wishMore").addEventListener("click", () => { wishSent = false; renderWish(); });
+    return;
+  }
+  p.innerHTML = `
+    <label class="field" for="wishText">テーマ</label>
+    <textarea id="wishText" maxlength="${WISH_MAX + 20}" placeholder="例：通知表の所見、みんなどうやって書いてる？"></textarea>
+    <p class="count" id="wishCount" aria-live="polite">0 / ${WISH_MAX}字</p>
+    <label class="field" for="wishName">ペンネーム（なくても大丈夫）</label>
+    <input class="text" id="wishName" maxlength="20" autocomplete="off">
+    <p class="hint">本名や学校名は書かないでください。放送で読むときはペンネームで紹介します。</p>
+    <button type="button" class="btn" id="wishBtn" disabled>希望を送る</button>`;
+  const ta = $("#wishText"), cnt = $("#wishCount"), btn = $("#wishBtn");
+  ta.addEventListener("input", () => {
+    const n = ta.value.trim().length;
+    cnt.textContent = `${n} / ${WISH_MAX}字`;
+    cnt.classList.toggle("over", n > WISH_MAX);
+    btn.disabled = !uid || n === 0 || n > WISH_MAX;
+  });
+  btn.addEventListener("click", async () => {
+    const text = ta.value.trim(), name = $("#wishName").value.trim().slice(0, 20);
+    if (!uid || !text || text.length > WISH_MAX) return;
+    btn.disabled = true;
+    const id = push(ref(db, "wishes")).key;
+    try {
+      // 希望と「最後に送った時刻」を1回で書く（ルールで1分に1件まで）
+      await update(ref(db), {
+        [`wishes/${id}`]: { uid, text, name, week: WEEK.id, at: serverTimestamp() },
+        [`wishLog/${uid}`]: serverTimestamp()
+      });
+      wishSent = true; renderWish();
+    } catch (e) {
+      showStatus(e.code === "PERMISSION_DENIED" ? "続けて送るときは、1分ほど待ってからにしてください。" : "送れませんでした。（" + e.code + "）", true);
+      btn.disabled = false;
+    }
+  });
+}
+function renderWishList(){
+  const list = Object.values(publicWishes).sort((a,b) => (b.at||0) - (a.at||0)).slice(0, 20);
+  $("#wishList").innerHTML = list.length
+    ? list.map(w => `<li><p>${esc(w.text)}</p><small>${w.name ? esc(w.name) + " さん" : "ペンネームなし"}</small></li>`).join("")
+    : `<li><p>まだありません。最初の希望を書いてみませんか？</p></li>`;
+}
+
+function renderAll(){ renderMap(); renderPin(); renderScenes(); renderVote(); renderWish(); renderWishList(); }
+
+// ---------- 管理画面（#admin） ----------
+function startAdmin(){
+  $("#listenerView").hidden = true; $("#adminView").hidden = false;
+  const body = $("#adminBody");
+  let wishes = {}, filter = "new";
+  onAuthStateChanged(auth, async user => {
+    if (!user || user.isAnonymous) {
+      body.innerHTML = `<p>Google アカウントでログインしてください。</p><button class="btn" id="login">Google でログイン</button>`;
+      $("#login").addEventListener("click", () => signInWithPopup(auth, new GoogleAuthProvider()).catch(e => alert(e.code)));
+      return;
+    }
+    const isAdmin = (await get(ref(db, `admins/${user.uid}`)).catch(() => null))?.val() === true;
+    if (!isAdmin) {
+      body.innerHTML = `<p>このアカウントはまだ管理者に登録されていません。</p>
+        <p class="who">あなたの UID：<b>${esc(user.uid)}</b></p>
+        <p class="lead">Firebase コンソールの Realtime Database で、<code>admins</code> の下にこの UID を名前にして値 <code>true</code> を追加してから、読み込み直してください。</p>
+        <button class="btn ghost" id="logout">ログアウト</button>`;
+      $("#logout").addEventListener("click", () => signOut(auth));
+      return;
+    }
+    onValue(ref(db, "wishes"), s => { wishes = s.val() || {}; draw(); }, e => body.textContent = e.code);
+    function draw(){
+      const all = Object.entries(wishes).sort((a,b) => (b[1].at||0) - (a[1].at||0));
+      const shown = all.filter(([,w]) => filter === "all" || (filter === "new" ? !w.status : w.status === filter));
+      const n = s => all.filter(([,w]) => s === "new" ? !w.status : w.status === s).length;
+      body.innerHTML = `<p class="who">${esc(user.email)} でログイン中　<button class="btn ghost" id="logout">ログアウト</button></p>
+        <div class="tabs">
+          ${[["new","未確認"],["published","公開中"],["hidden","非公開"],["all","すべて"]].map(([k,l]) =>
+            `<button class="btn ${filter===k?"":"ghost"}" data-f="${k}">${l}（${k==="all"?all.length:n(k)}）</button>`).join("")}
+        </div>
+        ${shown.length ? shown.map(([id,w]) => `<div class="admin-item" data-status="${esc(w.status||"new")}">
+            <p>${esc(w.text)}</p>
+            <small>${w.name ? esc(w.name) + " さん" : "ペンネームなし"}／${w.at ? new Date(w.at).toLocaleString("ja-JP") : ""}／週 ${esc(w.week||"")}</small>
+            ${w.status !== "published" ? `<button class="btn" data-pub="${id}">公開する</button>` : ""}
+            ${w.status !== "hidden" ? `<button class="btn ghost" data-hide="${id}">非公開にする</button>` : ""}
+          </div>`).join("") : `<p class="lead">該当する希望はありません。</p>`}`;
+      $("#logout").addEventListener("click", () => signOut(auth));
+      body.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => { filter = b.dataset.f; draw(); }));
+      body.querySelectorAll("[data-pub]").forEach(b => b.addEventListener("click", () => {
+        const id = b.dataset.pub, w = wishes[id];
+        update(ref(db), { [`wishes/${id}/status`]: "published", [`publicWishes/${id}`]: { text: w.text, name: w.name || "", at: w.at || Date.now() } }).catch(e => alert(e.code));
+      }));
+      body.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => {
+        const id = b.dataset.hide;
+        update(ref(db), { [`wishes/${id}/status`]: "hidden", [`publicWishes/${id}`]: null }).catch(e => alert(e.code));
+      }));
+    }
+  });
+}
+</script>
+</body>
+</html>
