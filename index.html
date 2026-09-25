@@ -74,6 +74,11 @@ h2 .step{flex:none;width:1.7em;height:1.7em;border-radius:50%;background:var(--i
   display:inline-grid;place-items:center;font-size:.8rem;transform:translateY(-2px)}
 .lead{margin:0 0 16px;color:var(--muted)}
 .panel{background:var(--paper);border-radius:18px;padding:20px 18px}
+.foot{margin-top:18px;display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap}
+.foot .num{display:flex;align-items:baseline;gap:.35em;font-weight:700}
+.foot .num b{font-size:2rem;font-weight:900;line-height:1}
+.foot .btn{margin-left:auto}
+.foot .done{margin:0 0 0 auto}
 label.field{display:block;font-weight:700;margin-bottom:6px}
 select{width:100%;font:inherit;font-size:1rem;padding:10px 12px;border-radius:10px;border:2px solid var(--line);
   background:var(--sea);color:var(--ink)}
@@ -166,6 +171,11 @@ footer button{font:inherit;background:none;border:0;color:inherit;text-decoratio
     <span><i style="background:var(--y2)"></i>3〜5人</span>
     <span><i style="background:var(--y3)"></i>6〜9人</span>
     <span><i style="background:var(--y4)"></i>10人〜</span>
+  </div>
+
+  <div class="panel foot" aria-live="polite">
+    <div class="num"><span>今週の足跡</span><b id="footNum">0</b></div>
+    <div id="footAct"></div>
   </div>
 
   <section aria-labelledby="h-pin">
@@ -263,7 +273,7 @@ const WISH_MAX = 80;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let db, auth, uid = null;
-let pins = {}, votes = {}, publicWishes = {};
+let pins = {}, votes = {}, publicWishes = {}, footprints = {};
 let selected = null, wishSent = false, editingPin = false;
 const closed = () => Date.now() > new Date(WEEK.deadline).getTime();
 
@@ -281,6 +291,7 @@ function startListener(){
     onValue(ref(db, "pins"), s => { pins = s.val() || {}; renderMap(); renderPin(); renderScenes(); }, onErr);
     onValue(ref(db, `votes/${WEEK.id}`), s => { votes = s.val() || {}; renderVote(); }, onErr);
     onValue(ref(db, "publicWishes"), s => { publicWishes = s.val() || {}; renderWishList(); }, onErr);
+    onValue(ref(db, `footprints/${WEEK.id}`), s => { footprints = s.val() || {}; renderFoot(); }, onErr);
   });
   // 裏に回したタブは接続を切る（Spark の同時接続100を節約）
   document.addEventListener("visibilitychange", () => {
@@ -379,6 +390,22 @@ function renderScenes(){
       <span class="n">${counts[i]}人</span></li>`).join("");
 }
 
+// --- footprint（1日1回・今週の分を合計） ---
+const today = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // 日本時間の日付
+function renderFoot(){
+  const total = Object.values(footprints).reduce((n, day) => n + Object.keys(day || {}).length, 0);
+  $("#footNum").textContent = total;
+  const act = $("#footAct");
+  if (!uid) { act.innerHTML = ""; return; }
+  if (footprints[today()]?.[uid]) { act.innerHTML = `<p class="done">今日の足跡を残しました。また明日。</p>`; return; }
+  act.innerHTML = `<button type="button" class="btn" id="footBtn">今日も聴いたよ</button>`;
+  $("#footBtn").addEventListener("click", async () => {
+    $("#footBtn").disabled = true;
+    try { await set(ref(db, `footprints/${WEEK.id}/${today()}/${uid}`), serverTimestamp()); }
+    catch (e) { showStatus("足跡を残せませんでした。（" + e.code + "）", true); renderFoot(); }
+  });
+}
+
 // --- vote ---
 function renderVote(){
   const p = $("#votePanel"), mv = myVote();
@@ -463,7 +490,7 @@ function renderWishList(){
     : `<li><p>まだありません。最初の希望を書いてみませんか？</p></li>`;
 }
 
-function renderAll(){ renderMap(); renderPin(); renderScenes(); renderVote(); renderWish(); renderWishList(); }
+function renderAll(){ renderMap(); renderFoot(); renderPin(); renderScenes(); renderVote(); renderWish(); renderWishList(); }
 
 // ---------- 管理画面（#admin） ----------
 function startAdmin(){
