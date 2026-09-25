@@ -272,17 +272,6 @@ function showStatus(msg, isErr){
   el.hidden = !msg; el.textContent = msg || ""; el.classList.toggle("err", !!isErr);
 }
 
-// ---------- 起動 ----------
-if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.databaseURL) {
-  showStatus("Firebase の設定がまだ入っていません。ファイル上部の FIREBASE_CONFIG に値を貼ってください。", true);
-  renderAll();
-} else {
-  const app = initializeApp(FIREBASE_CONFIG);
-  auth = getAuth(app);
-  db = getDatabase(app);
-  if (location.hash === "#admin") startAdmin(); else startListener();
-}
-
 // ---------- リスナー画面 ----------
 function startListener(){
   renderAll();
@@ -524,6 +513,17 @@ function startAdmin(){
       }));
     }
   });
+}
+
+// ---------- 起動 ----------
+if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.databaseURL) {
+  showStatus("Firebase の設定がまだ入っていません。ファイル上部の FIREBASE_CONFIG に値を貼ってください。", true);
+  renderAll();
+} else {
+  const app = initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(app);
+  db = getDatabase(app);
+  if (location.hash === "#admin") startAdmin(); else startListener();
 }
 </script>
 </body>
