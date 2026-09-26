@@ -18,12 +18,45 @@
       }
     },
 
-    "votes": {
+    "topics": {
       "$week": {
         ".read": "auth != null",
-        "$uid": {
-          ".write": "auth != null && auth.uid === $uid",
-          ".validate": "newData.isString() && newData.val().length <= 10"
+        "$id": {
+          ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+          ".validate": "newData.hasChildren(['title', 'at'])",
+          "title": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
+          "note": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "at": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
+    "reactions": {
+      "topics": {
+        "$week": {
+          ".read": "auth != null",
+          "$topic": {
+            "$stamp": {
+              ".validate": "$topic.length <= 40 && $stamp.matches(/^(like|agree|curious|same|listen)$/)",
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid",
+                ".validate": "newData.val() === true"
+              }
+            }
+          }
+        }
+      },
+      "wishes": {
+        ".read": "auth != null",
+        "$id": {
+          "$stamp": {
+            ".validate": "root.child('publicWishes').child($id).exists() && $stamp.matches(/^(like|agree|curious|same|listen)$/)",
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid",
+              ".validate": "newData.val() === true"
+            }
+          }
         }
       }
     },

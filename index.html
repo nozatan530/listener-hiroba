@@ -97,18 +97,17 @@ select{width:100%;font:inherit;font-size:1rem;padding:10px 12px;border-radius:10
 
 /* vote */
 .deadline{font-size:.9rem;color:var(--muted);margin:-8px 0 14px}
-.opts{display:grid;gap:10px;margin:0 0 16px;padding:0;border:0}
-.opt{display:block;cursor:pointer;border:2px solid var(--line);border-radius:14px;padding:14px 16px;position:relative}
-.opt input{position:absolute;opacity:0;pointer-events:none}
-.opt:has(input:checked){border-color:var(--ink);background:var(--sea)}
-.opt:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:2px}
-.opt strong{display:block;font-size:1.05rem;line-height:1.5}
-.opt em{font-style:normal;font-size:.82rem;color:var(--muted)}
-.result{border-radius:14px;padding:12px 14px;border:2px solid var(--line);margin-bottom:10px}
-.result.me{border-color:var(--focus)}
-.result strong{display:block;line-height:1.5;margin-bottom:6px}
-.result .row{display:grid;grid-template-columns:1fr 3.4em;gap:10px;align-items:center}
-.result .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.topic{border:2px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.topic strong{display:block;font-size:1.05rem;line-height:1.5}
+.topic em{font-style:normal;font-size:.82rem;color:var(--muted)}
+.stamps{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.stamp{font:inherit;font-size:.85rem;font-weight:700;line-height:1.4;border:2px solid var(--line);background:transparent;color:var(--ink);
+  border-radius:999px;padding:4px 11px;cursor:pointer;display:inline-flex;gap:.35em;align-items:center}
+.stamp b{font-variant-numeric:tabular-nums;color:var(--muted)}
+.stamp[aria-pressed="true"]{background:var(--y1);border-color:var(--y3)}
+.stamp[aria-pressed="true"] b{color:var(--ink)}
+.stamp:disabled{cursor:default}
+.stamp:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 
 /* wish */
 textarea,input.text{width:100%;font:inherit;font-size:1rem;padding:10px 12px;border-radius:10px;border:2px solid var(--line);
@@ -142,6 +141,9 @@ footer button{font:inherit;background:none;border:0;color:inherit;text-decoratio
 .admin-item p{margin:0 0 4px;line-height:1.6}
 .admin-item small{color:var(--muted);display:block;margin-bottom:10px}
 .admin-item .btn{padding:8px 18px;font-size:.88rem;margin-right:6px}
+.admin-item[data-cand]{border-left-color:var(--focus)}
+.addtopic{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+.addtopic input{flex:1 1 14em}
 .tabs{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
 </style>
 </head>
@@ -182,15 +184,16 @@ footer button{font:inherit;background:none;border:0;color:inherit;text-decoratio
     <h2 id="h-vote"><span class="step">2</span>金曜の放送で話すテーマ</h2>
     <p class="deadline" id="deadlineText"></p>
     <div class="panel">
-      <h3 class="inner-h">候補に投票する</h3>
-      <div id="votePanel"></div>
+      <h3 class="inner-h">候補にスタンプを押す</h3>
+      <p class="lead" style="margin:-2px 0 12px">気になるテーマに、いくつでも押せます。もう一度押すと取り消せます。</p>
+      <div id="topicPanel"></div>
       <hr class="divider">
       <h3 class="inner-h">話してほしいテーマを書く</h3>
-      <p class="lead" style="margin:-2px 0 12px">候補にないテーマは自由に書いてください。届いた希望から、次の週の候補を1つ選びます。</p>
+      <p class="lead" style="margin:-2px 0 12px">候補にないテーマは自由に書いてください。届いた希望は、のざたんが確認して候補に加えます。</p>
       <div id="wishPanel"></div>
     </div>
     <h3 class="subh">最近届いた希望</h3>
-    <p class="lead" style="margin-top:-4px">のざたんが確認したものだけ載せています。</p>
+    <p class="lead" style="margin-top:-4px">のざたんが確認したものだけ載せています。スタンプも押せます。</p>
     <ul class="wishes" id="wishList"></ul>
   </section>
 
@@ -223,9 +226,10 @@ const FIREBASE_CONFIG = {
 // 2) 今週の設定：毎週ここを書き換えて公開し直す
 // ===================================================================
 const WEEK = {
-  id: "2026-10-02",                       // 放送日など。週ごとに変えると投票がリセットされる
-  deadline: "2026-10-02T23:59:00+09:00",  // 投票と希望の締め切り
-  deadlineText: "金曜 23:59 締め切り。投票の結果と、届いた希望は金曜の放送で紹介します。",
+  id: "2026-10-02",                       // 放送日など。週ごとに変えると、候補・スタンプ・足跡がリセットされる
+  deadline: "2026-10-02T23:59:00+09:00",  // スタンプと希望の締め切り
+  deadlineText: "金曜 23:59 締め切り。スタンプの集まり具合と、届いた希望は金曜の放送で紹介します。",
+  // のざたんの候補。届いた希望は、管理画面（#admin）からあとで候補に追加できる
   topics: [
     { id: "a", title: "先生の仕事、どこまで手放していい？", note: "のざたんの候補" },
     { id: "b", title: "生成AIの宿題、禁止する？ 使わせる？", note: "のざたんの候補" },
@@ -303,12 +307,13 @@ const SHAPES = {
 const PREF_NAMES = new Set(PREFS.map(p => p[0]));
 const HOME = "高知県";
 const WISH_MAX = 80;
+const STAMPS = [["like","👍","いいね"],["agree","💡","たしかに！"],["curious","🤔","気になる"],["same","🙋","それな"],["listen","👂","聴きたい"]];
 
 // ---------- 画面の状態 ----------
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let db, auth, uid = null;
-let pins = {}, votes = {}, publicWishes = {}, footprints = {};
+let pins = {}, publicWishes = {}, footprints = {}, topicsDb = {}, topicReacts = {}, wishReacts = {};
 let selected = null, wishSent = false, editingPin = false;
 const closed = () => Date.now() > new Date(WEEK.deadline).getTime();
 
@@ -323,8 +328,11 @@ function startListener(){
   onAuthStateChanged(auth, user => {
     if (!user) { signInAnonymously(auth).catch(e => showStatus("接続できませんでした。時間をおいて読み込み直してください。（" + e.code + "）", true)); return; }
     uid = user.uid;
+    renderTopics(); renderWishList();
     onValue(ref(db, "pins"), s => { pins = s.val() || {}; renderMap(); renderPin(); }, onErr);
-    onValue(ref(db, `votes/${WEEK.id}`), s => { votes = s.val() || {}; renderVote(); }, onErr);
+    onValue(ref(db, `topics/${WEEK.id}`), s => { topicsDb = s.val() || {}; renderTopics(); }, onErr);
+    onValue(ref(db, `reactions/topics/${WEEK.id}`), s => { topicReacts = s.val() || {}; renderTopics(); }, onErr);
+    onValue(ref(db, "reactions/wishes"), s => { wishReacts = s.val() || {}; renderWishList(); }, onErr);
     onValue(ref(db, "publicWishes"), s => { publicWishes = s.val() || {}; renderWishList(); }, onErr);
     onValue(ref(db, `footprints/${WEEK.id}`), s => { footprints = s.val() || {}; renderFoot(); }, onErr);
   });
@@ -337,7 +345,6 @@ function startListener(){
 function onErr(e){ showStatus("データを読み込めませんでした。（" + (e.code || e.message) + "）", true); }
 
 const myPin = () => (uid && pins[uid]) || null;
-const myVote = () => (uid && votes[uid]) || null;
 
 // --- map ---
 function prefCounts(){
@@ -434,38 +441,40 @@ function renderFoot(){
   });
 }
 
-// --- vote ---
-function renderVote(){
-  const p = $("#votePanel"), mv = myVote();
+// --- stamps ---
+// base は reactions/... のパス。スタンプごとに {uid: true} を持つ
+function stampRow(base, node, locked){
+  node = node || {};
+  return `<div class="stamps" data-base="${esc(base)}">` + STAMPS.map(([k, e, l]) => {
+    const who = node[k] || {}, n = Object.keys(who).length, me = !!(uid && who[uid]);
+    return `<button type="button" class="stamp" data-s="${k}" aria-pressed="${me}" aria-label="${l} ${n}"${locked || !uid ? " disabled" : ""}>` +
+      `<span aria-hidden="true">${e}</span>${l}${n ? `<b>${n}</b>` : ""}</button>`;
+  }).join("") + `</div>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("#listenerView .stamp");
+  if (!b || !uid || b.disabled) return;
+  const base = b.parentElement.dataset.base, on = b.getAttribute("aria-pressed") === "true";
+  b.disabled = true;
+  try { await set(ref(db, `${base}/${b.dataset.s}/${uid}`), on ? null : true); }
+  catch (err) { showStatus("スタンプを押せませんでした。（" + err.code + "）", true); b.disabled = false; }
+});
+
+// --- topics ---
+function allTopics(){
+  const added = Object.entries(topicsDb).sort((a, b) => (a[1].at || 0) - (b[1].at || 0))
+    .map(([id, t]) => ({ id, title: t.title, note: t.note || "" }));
+  return [...WEEK.topics, ...added];
+}
+function renderTopics(){
+  const p = $("#topicPanel");
   $("#deadlineText").textContent = closed() ? "今週の受付は締め切りました。結果は金曜の放送で。" : WEEK.deadlineText;
   if (!uid) { p.innerHTML = `<p class="lead" style="margin:0">接続しています…</p>`; return; }
-  if (mv || closed()) {
-    const counts = WEEK.topics.map(t => Object.values(votes).filter(v => v === t.id).length);
-    const total = counts.reduce((a,b) => a+b, 0);
-    p.innerHTML = `<p class="done">${mv ? "投票しました。" : ""}途中経過（${total}票）</p>` +
-      WEEK.topics.map((t,i) => {
-        const pct = total ? Math.round(counts[i]/total*100) : 0, me = mv === t.id;
-        return `<div class="result${me?" me":""}"><strong>${esc(t.title)}</strong>
-          <div class="row"><span style="height:14px;border-radius:7px;background:var(--tile);overflow:hidden;display:block">
-          <span style="display:block;height:100%;width:${pct}%;background:${me?"var(--focus)":"var(--y3)"};border-radius:7px"></span></span>
-          <span class="n">${pct}%</span></div>${me?'<em style="font-style:normal;font-size:.82rem;color:var(--muted)">あなたの1票</em>':""}</div>`;
-      }).join("") +
-      (mv && !closed() ? `<button type="button" class="btn ghost" id="revote" style="margin-top:6px">投票をやり直す</button>` : "");
-    $("#revote")?.addEventListener("click", () => remove(ref(db, `votes/${WEEK.id}/${uid}`)).catch(onErr));
-    return;
-  }
-  p.innerHTML = `<fieldset class="opts"><legend class="sr">テーマを1つ選ぶ</legend>` +
-    WEEK.topics.map(t => `<label class="opt"><input type="radio" name="topic" value="${esc(t.id)}">
-      <strong>${esc(t.title)}</strong><em>${esc(t.note)}</em></label>`).join("") +
-    `</fieldset><button type="button" class="btn" id="voteBtn" disabled>このテーマに投票する</button>`;
-  p.querySelectorAll('input[name="topic"]').forEach(i => i.addEventListener("change", () => { $("#voteBtn").disabled = false; }));
-  $("#voteBtn").addEventListener("click", async () => {
-    const v = p.querySelector('input[name="topic"]:checked')?.value;
-    if (!v) return;
-    $("#voteBtn").disabled = true;
-    try { await set(ref(db, `votes/${WEEK.id}/${uid}`), v); }
-    catch (e) { showStatus("投票できませんでした。（" + e.code + "）", true); $("#voteBtn").disabled = false; }
-  });
+  const list = allTopics();
+  p.innerHTML = list.length
+    ? list.map(t => `<div class="topic"><strong>${esc(t.title)}</strong>${t.note ? `<em>${esc(t.note)}</em>` : ""}
+        ${stampRow(`reactions/topics/${WEEK.id}/${t.id}`, topicReacts[t.id], closed())}</div>`).join("")
+    : `<p class="lead" style="margin:0">まだ候補がありません。</p>`;
 }
 
 // --- wish ---
@@ -512,19 +521,20 @@ function renderWish(){
   });
 }
 function renderWishList(){
-  const list = Object.values(publicWishes).sort((a,b) => (b.at||0) - (a.at||0)).slice(0, 20);
+  const list = Object.entries(publicWishes).sort((a,b) => (b[1].at||0) - (a[1].at||0)).slice(0, 20);
   $("#wishList").innerHTML = list.length
-    ? list.map(w => `<li><p>${esc(w.text)}</p><small>${w.name ? esc(w.name) + " さん" : "ペンネームなし"}</small></li>`).join("")
+    ? list.map(([id, w]) => `<li><p>${esc(w.text)}</p><small>${w.name ? esc(w.name) + " さん" : "ペンネームなし"}</small>
+        ${stampRow(`reactions/wishes/${id}`, wishReacts[id], false)}</li>`).join("")
     : `<li><p>まだありません。最初の希望を書いてみませんか？</p></li>`;
 }
 
-function renderAll(){ renderMap(); renderFoot(); renderPin(); renderVote(); renderWish(); renderWishList(); }
+function renderAll(){ renderMap(); renderFoot(); renderPin(); renderTopics(); renderWish(); renderWishList(); }
 
 // ---------- 管理画面（#admin） ----------
 function startAdmin(){
   $("#listenerView").hidden = true; $("#adminView").hidden = false;
   const body = $("#adminBody");
-  let wishes = {}, filter = "new";
+  let wishes = {}, cands = {}, reacts = {}, filter = "new";
   onAuthStateChanged(auth, async user => {
     if (!user || user.isAnonymous) {
       body.innerHTML = `<p>Google アカウントでログインしてください。</p><button class="btn" id="login">Google でログイン</button>`;
@@ -541,22 +551,48 @@ function startAdmin(){
       return;
     }
     onValue(ref(db, "wishes"), s => { wishes = s.val() || {}; draw(); }, e => body.textContent = e.code);
+    onValue(ref(db, `topics/${WEEK.id}`), s => { cands = s.val() || {}; draw(); }, e => body.textContent = e.code);
+    onValue(ref(db, "reactions/wishes"), s => { reacts = s.val() || {}; draw(); }, e => body.textContent = e.code);
+    const stampCount = node => Object.values(node || {}).reduce((n, who) => n + Object.keys(who || {}).length, 0);
     function draw(){
+      const draft = $("#newTopic")?.value || "";
       const all = Object.entries(wishes).sort((a,b) => (b[1].at||0) - (a[1].at||0));
       const shown = all.filter(([,w]) => filter === "all" || (filter === "new" ? !w.status : w.status === filter));
       const n = s => all.filter(([,w]) => s === "new" ? !w.status : w.status === s).length;
       body.innerHTML = `<p class="who">${esc(user.email)} でログイン中　<button class="btn ghost" id="logout">ログアウト</button></p>
+        <h2>今週（${esc(WEEK.id)}）の候補</h2>
+        <p class="lead">コードに書いた候補（${WEEK.topics.length}件）のあとに、ここで追加した候補が並びます。</p>
+        ${Object.entries(cands).sort((a,b) => (a[1].at||0) - (b[1].at||0)).map(([id,t]) => `<div class="admin-item" data-cand>
+            <p>${esc(t.title)}</p><small>${esc(t.note || "")}</small>
+            <button class="btn ghost" data-uncand="${id}">候補から外す</button></div>`).join("")}
+        <div class="addtopic"><input class="text" id="newTopic" maxlength="80" placeholder="候補を直接追加（のざたんの候補）" autocomplete="off">
+          <button class="btn" id="addTopic">追加</button></div>
+        <h2>届いた希望</h2>
         <div class="tabs">
           ${[["new","未確認"],["published","公開中"],["hidden","非公開"],["all","すべて"]].map(([k,l]) =>
             `<button class="btn ${filter===k?"":"ghost"}" data-f="${k}">${l}（${k==="all"?all.length:n(k)}）</button>`).join("")}
         </div>
         ${shown.length ? shown.map(([id,w]) => `<div class="admin-item" data-status="${esc(w.status||"new")}">
             <p>${esc(w.text)}</p>
-            <small>${w.name ? esc(w.name) + " さん" : "ペンネームなし"}／${w.at ? new Date(w.at).toLocaleString("ja-JP") : ""}／週 ${esc(w.week||"")}</small>
+            <small>${w.name ? esc(w.name) + " さん" : "ペンネームなし"}／${w.at ? new Date(w.at).toLocaleString("ja-JP") : ""}／週 ${esc(w.week||"")}${stampCount(reacts[id]) ? `／スタンプ ${stampCount(reacts[id])}` : ""}</small>
+            ${cands[id] ? `<button class="btn ghost" data-uncand="${id}">候補から外す</button>` : `<button class="btn" data-cand="${id}">今週の候補に追加</button>`}
             ${w.status !== "published" ? `<button class="btn" data-pub="${id}">公開する</button>` : ""}
             ${w.status !== "hidden" ? `<button class="btn ghost" data-hide="${id}">非公開にする</button>` : ""}
           </div>`).join("") : `<p class="lead">該当する希望はありません。</p>`}`;
       $("#logout").addEventListener("click", () => signOut(auth));
+      const nt = $("#newTopic"); nt.value = draft;
+      $("#addTopic").addEventListener("click", () => {
+        const title = nt.value.trim().slice(0, 80); if (!title) return;
+        set(push(ref(db, `topics/${WEEK.id}`)), { title, note: "のざたんの候補", at: serverTimestamp() })
+          .then(() => { nt.value = ""; }).catch(e => alert(e.code));
+      });
+      body.querySelectorAll("[data-cand]").forEach(b => b.tagName === "BUTTON" && b.addEventListener("click", () => {
+        const id = b.dataset.cand, w = wishes[id];
+        set(ref(db, `topics/${WEEK.id}/${id}`), { title: w.text, note: w.name ? `届いた希望から：${w.name}さん` : "届いた希望から", at: serverTimestamp() }).catch(e => alert(e.code));
+      }));
+      body.querySelectorAll("[data-uncand]").forEach(b => b.addEventListener("click", () => {
+        remove(ref(db, `topics/${WEEK.id}/${b.dataset.uncand}`)).catch(e => alert(e.code));
+      }));
       body.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => { filter = b.dataset.f; draw(); }));
       body.querySelectorAll("[data-pub]").forEach(b => b.addEventListener("click", () => {
         const id = b.dataset.pub, w = wishes[id];
