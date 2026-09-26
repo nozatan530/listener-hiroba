@@ -68,7 +68,7 @@ h1{margin:.1em 0 0;font-size:clamp(1.9rem,7vw,2.5rem);font-weight:900;line-heigh
 /* スマホ幅では県名が読めない大きさになるので、選んだ県・自分の県・高知だけ出す */
 @container (max-width:479px){.lbl{display:none}.lbl.on{display:inline;font-size:34px;stroke-width:5px}.dot{r:11px}}
 @media (prefers-reduced-motion:reduce){.wave{animation:none}.pref path,.pref rect{transition:none}}
-button:focus-visible,select:focus-visible,label.chip:focus-within{outline:3px solid var(--focus);outline-offset:2px}
+button:focus-visible,select:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .readout{min-height:1.75em;margin:6px 0 0;font-weight:500}
 .legend{display:flex;gap:10px;align-items:center;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
 .legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:4px}
@@ -88,12 +88,6 @@ h2 .step{flex:none;width:1.7em;height:1.7em;border-radius:50%;background:var(--i
 label.field{display:block;font-weight:700;margin-bottom:6px}
 select{width:100%;font:inherit;font-size:1rem;padding:10px 12px;border-radius:10px;border:2px solid var(--line);
   background:var(--sea);color:var(--ink)}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px;padding:0;border:0}
-.chips legend{font-weight:700;margin-bottom:8px;padding:0}
-label.chip{position:relative;cursor:pointer}
-label.chip input{position:absolute;opacity:0;pointer-events:none}
-label.chip span{display:inline-block;padding:7px 14px;border-radius:999px;border:2px solid var(--line);font-weight:500}
-label.chip input:checked + span{background:var(--ink);color:var(--sea);border-color:var(--ink)}
 .btn{font:inherit;font-weight:700;font-size:1rem;border:0;border-radius:999px;padding:12px 26px;cursor:pointer;
   background:var(--y3);color:#2A1A05}
 .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -180,7 +174,7 @@ footer button{font:inherit;background:none;border:0;color:inherit;text-decoratio
 
   <section aria-labelledby="h-pin">
     <h2 id="h-pin"><span class="step">1</span>どこで聴いていますか？</h2>
-    <p class="lead">都道府県と、よく聴く場面を教えてください。名前は出ません。</p>
+    <p class="lead">都道府県を教えてください。名前は出ません。</p>
     <div class="panel" id="pinPanel"></div>
   </section>
 
@@ -308,7 +302,6 @@ const SHAPES = {
 };
 const PREF_NAMES = new Set(PREFS.map(p => p[0]));
 const HOME = "高知県";
-const SCENES = ["通勤・通学","家事","散歩・運動","仕事の合間","寝る前","そのほか"];
 const WISH_MAX = 80;
 
 // ---------- 画面の状態 ----------
@@ -398,27 +391,22 @@ function renderPin(){
   if (!uid) { p.innerHTML = `<p class="lead" style="margin:0">接続しています…</p>`; return; }
   if (mp && !editingPin) {
     p.innerHTML = `<p class="done">${esc(mp.pref)}にピンを刺しました。聴いてくれてありがとうございます。</p>
-      <p class="lead" style="margin:-6px 0 14px">よく聴く場面：${esc(mp.scene)}</p>
-      <button type="button" class="btn ghost" id="unpin">場所や場面を変える</button>`;
+      <button type="button" class="btn ghost" id="unpin">場所を変える</button>`;
     $("#unpin").addEventListener("click", () => { editingPin = true; selected = mp.pref; renderPin(); });
     return;
   }
   const opts = PREFS.map(([n]) => `<option value="${esc(n)}"${n===(selected||mp?.pref)?" selected":""}>${esc(n)}</option>`).join("");
-  const chips = SCENES.map(s => `<label class="chip"><input type="radio" name="scene" value="${esc(s)}"${mp?.scene===s?" checked":""}><span>${esc(s)}</span></label>`).join("");
   p.innerHTML = `
     <label class="field" for="prefSel">都道府県</label>
     <select id="prefSel"><option value="">選んでください</option>${opts}</select>
-    <fieldset class="chips" style="margin-top:18px"><legend>よく聴く場面</legend>${chips}</fieldset>
-    <button type="button" class="btn" id="pinBtn" disabled>${mp ? "ピンを刺し直す" : "ピンを刺す"}</button>`;
+    <button type="button" class="btn" id="pinBtn" style="margin-top:18px" disabled>${mp ? "ピンを刺し直す" : "ピンを刺す"}</button>`;
   $("#prefSel").addEventListener("change", e => { selected = e.target.value || null; updatePinBtn(); renderMap(); });
-  p.querySelectorAll('input[name="scene"]').forEach(i => i.addEventListener("change", updatePinBtn));
   $("#pinBtn").addEventListener("click", async () => {
     const pref = $("#prefSel").value;
-    const scene = p.querySelector('input[name="scene"]:checked')?.value;
-    if (!pref || !scene) return;
+    if (!pref) return;
     $("#pinBtn").disabled = true;
     try {
-      await set(ref(db, `pins/${uid}`), { pref, scene, at: serverTimestamp() });
+      await set(ref(db, `pins/${uid}`), { pref, at: serverTimestamp() });
       editingPin = false; selected = pref;
       $("#readout").textContent = `${pref}にピンを刺しました。`;
     } catch (e) { showStatus("ピンを刺せませんでした。（" + e.code + "）", true); $("#pinBtn").disabled = false; }
@@ -427,7 +415,7 @@ function renderPin(){
 }
 function updatePinBtn(){
   const btn = $("#pinBtn"); if (!btn) return;
-  btn.disabled = !($("#prefSel").value && document.querySelector('input[name="scene"]:checked'));
+  btn.disabled = !$("#prefSel").value;
 }
 
 // --- footprint（1日1回・今週の分を合計） ---
