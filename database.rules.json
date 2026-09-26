@@ -18,49 +18,6 @@
       }
     },
 
-    "topics": {
-      "$week": {
-        ".read": "auth != null",
-        "$id": {
-          ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
-          ".validate": "newData.hasChildren(['title', 'at'])",
-          "title": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
-          "note": { ".validate": "newData.isString() && newData.val().length <= 40" },
-          "at": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": false }
-        }
-      }
-    },
-
-    "reactions": {
-      "topics": {
-        "$week": {
-          ".read": "auth != null",
-          "$topic": {
-            "$stamp": {
-              ".validate": "$topic.length <= 40 && $stamp.matches(/^(like|agree|curious|same|listen)$/)",
-              "$uid": {
-                ".write": "auth != null && auth.uid === $uid",
-                ".validate": "newData.val() === true"
-              }
-            }
-          }
-        }
-      },
-      "wishes": {
-        ".read": "auth != null",
-        "$id": {
-          "$stamp": {
-            ".validate": "root.child('publicWishes').child($id).exists() && $stamp.matches(/^(like|agree|curious|same|listen)$/)",
-            "$uid": {
-              ".write": "auth != null && auth.uid === $uid",
-              ".validate": "newData.val() === true"
-            }
-          }
-        }
-      }
-    },
-
     "footprints": {
       "$week": {
         ".read": "auth != null",
@@ -74,20 +31,91 @@
       }
     },
 
-    "wishLog": {
+    "topics": {
+      ".read": "auth != null",
+      "$week": {
+        ".validate": "$week.matches(/^\\d{4}-\\d{2}-\\d{2}$/)",
+        "$id": {
+          ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+          ".validate": "newData.hasChildren(['title', 'at'])",
+          "title": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
+          "note": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "at": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
+    "reactions": {
+      ".read": "auth != null",
+      "topics": {
+        "$week": {
+          "$topic": {
+            "$stamp": {
+              ".validate": "root.child('topics').child($week).child($topic).exists() && $stamp.matches(/^(like|agree|curious|same|listen)$/)",
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid",
+                ".validate": "newData.val() === true"
+              }
+            }
+          }
+        }
+      },
+      "comments": {
+        "$id": {
+          "$stamp": {
+            ".validate": "root.child('publicComments').child($id).exists() && $stamp.matches(/^(like|agree|curious|same|listen)$/)",
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid",
+              ".validate": "newData.val() === true"
+            }
+          }
+        }
+      }
+    },
+
+    "postLog": {
       "$uid": {
         ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.val() === now && (!data.exists() || now - data.val() > 60000)"
       }
     },
 
+    "myPosts": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$id": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists()",
+          ".validate": "newData.val() === 'wish' || newData.val() === 'comment'"
+        }
+      }
+    },
+
     "wishes": {
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "$id": {
-        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().child('wishLog').child(auth.uid).val() === now) || root.child('admins').child(auth.uid).val() === true)",
+        ".read": "auth != null && data.child('uid').val() === auth.uid",
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().child('postLog').child(auth.uid).val() === now) || root.child('admins').child(auth.uid).val() === true)",
         ".validate": "newData.hasChildren(['uid', 'text', 'name', 'week', 'at'])",
         "uid": { ".validate": "newData.isString()" },
         "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
+        "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "week": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "at": { ".validate": "newData.isNumber()" },
+        "status": { ".validate": "root.child('admins').child(auth.uid).val() === true && (newData.val() === 'published' || newData.val() === 'hidden')" },
+        "tweek": { ".validate": "root.child('admins').child(auth.uid).val() === true && newData.isString() && newData.val().length === 10" },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "comments": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$id": {
+        ".read": "auth != null && data.child('uid').val() === auth.uid",
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().child('postLog').child(auth.uid).val() === now) || root.child('admins').child(auth.uid).val() === true)",
+        ".validate": "newData.hasChildren(['uid', 'text', 'name', 'week', 'at'])",
+        "uid": { ".validate": "newData.isString()" },
+        "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200" },
         "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
         "week": { ".validate": "newData.isString() && newData.val().length <= 20" },
         "at": { ".validate": "newData.isNumber()" },
@@ -96,7 +124,7 @@
       }
     },
 
-    "publicWishes": {
+    "publicComments": {
       ".read": "auth != null",
       "$id": {
         ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
